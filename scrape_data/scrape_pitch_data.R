@@ -5,14 +5,25 @@ library(dplyr)
 library(pitchRx)
 library(tictoc)
 
-source("~/Documents/umpire_fe/define_functions.R")
+source("supporting_code/define_functions.R")
 
-start_log_file(T, "scrape_pitch_data")
+start_log_file(T, "scrape_data/log/scrape_pitch_data")
 
 # Scrape PitchRX ---------------------------------------------------------------
-# Place all data from June 2016 in a database
-my_db <- src_sqlite("~/Documents/umpire_fe/Data/pitchRx_2016.sqlite3", 
-                    create = T)
-scrape(start = "2016-01-01", end = "2016-12-31", connect = my_db$con)
+# indicator if db exists in desired location or not
+db_exists <- file.exists("Data/pitchfx.sqlite3")
+
+# open database if exists, creates if does not exist
+my_db <- src_sqlite("Data/pitchfx.sqlite3", 
+                    create = !db_exists)
+
+# if the database doesn't exist, scrape all pitchfx data
+# if the database does exist, updtae with missing dates
+if (!db_exists) {
+  scrape(start = "2008-01-01", end = "2008-05-01", connect = db$con)
+} else {
+  
+}
+
 
 end_log_file(T)
