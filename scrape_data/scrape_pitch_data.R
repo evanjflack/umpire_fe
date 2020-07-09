@@ -1,29 +1,37 @@
 # Header -----------------------------------------------------------------------
+# Proj: Umpire Fixed Effects
+# Author: Evan Flack (evanjflack@gmail.com)
+# Desc: Creates (or updates) a database of MLBs pitchFx
+# ------------------------------------------------------------------------------
 
 # Libraries --------------------------------------------------------------------
-library(dplyr)
+# library(dplyr)
+# library(dbplyr)
+library(RSQLite)
+# library(curl)
+library(RCurl)
 library(pitchRx)
 library(tictoc)
 
-source("supporting_code/define_functions.R")
+# source("../supporting_code/define_functions.R")
 
-start_log_file(T, "scrape_data/log/scrape_pitch_data")
+# start_log_file(T, "log/scrape_pitch_data")
 
 # Scrape PitchRX ---------------------------------------------------------------
-# indicator if db exists in desired location or not
-db_exists <- file.exists("Data/pitchfx.sqlite3")
+# Determine if database exists in desired location or not
+db_exists <- file.exists("../Data/pitchfx.sqlite3")
+message("Data Base Exists: ", db_exists)
 
-# open database if exists, creates if does not exist
-my_db <- src_sqlite("Data/pitchfx.sqlite3", 
-                    create = !db_exists)
+# Open database if exists, creates if does not exist
+db <- tbl("../Data/pitchfx.sqlite3", create = !db_exists)
 
-# if the database doesn't exist, scrape all pitchfx data
-# if the database does exist, updtae with missing dates
+dat <- scrape(start = "2016-06-01", end = "2016-06-01")
+
+# If the database doesn't exist, scrape all pitchfx data
+# If the database does exist, updtae with missing dates
 if (!db_exists) {
-  scrape(start = "2008-01-01", end = "2008-05-01", connect = db$con)
-} else {
-  
+  scrape(start = "2008-05-01", end = "2008-05-10", connect = db$con)
 }
 
-
+# End --------------------------------------------------------------------------
 end_log_file(T)
