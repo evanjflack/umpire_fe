@@ -10,8 +10,10 @@
 library(RSQLite)
 # library(curl)
 library(RCurl)
-library(pitchRx)
 library(tictoc)
+
+devtools::install_github("cpsievert/pitchRx")
+library(pitchRx)
 
 # source("../supporting_code/define_functions.R")
 
@@ -25,7 +27,14 @@ message("Data Base Exists: ", db_exists)
 # Open database if exists, creates if does not exist
 db <- tbl("../Data/pitchfx.sqlite3", create = !db_exists)
 
-dat <- scrape(start = "2016-06-01", end = "2016-06-01")
+data(gids, package = "pitchRx")
+head(gids)
+
+MNaway13 <- gids[grep("2013_06_[0-9]{2}_minmlb*", gids)]
+dat2 <- scrape(game.ids = MNaway13)
+
+
+dat <- scrape(start = "2013-06-01", end = "2013-06-01")
 
 # If the database doesn't exist, scrape all pitchfx data
 # If the database does exist, updtae with missing dates
