@@ -6,4 +6,5 @@
 *.DS_store
 *.Rproj
 
-Data/
+src/sandbox/
+data/
