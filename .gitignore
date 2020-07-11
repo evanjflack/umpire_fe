@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.csv
+*.DS_store
+*.Rproj
+
+src/sandbox/
+data/
