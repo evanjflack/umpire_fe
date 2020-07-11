@@ -1,11 +1,9 @@
 ---
-title: "Untitled"
+title: "Evaluating Bias in Baseball Statistics Using Umpire Fixed Effects"
 author: "Evan Flack"
 date: "7/9/2020"
 output: html_document
 ---
-
-## Evaluating Bias in Baseball Statistics Using Umpire Fixed Effects
 
 ### Introduction
 
@@ -42,19 +40,13 @@ grid.raster(img)
 
 ### First Stage Estimate
 
-|                 |Term                    |Estimate          |
-|:----------------|:-----------------------|:-----------------|
-|All Pitches      |Intercept               |0.135*** (0.0231) |
-|                 |Umpire Strike Avg (LOO) |0.597*** (0.0688) |
-|Marginal Pitches |Intercept               |0.165*** (0.0258) |
-|                 |Umpire Strike Avg (LOO) |0.666*** (0.052)  |
-
-
-### Appendix 
-
-
-```{r fig.width=8, fig.height=4,echo=FALSE, fig.align="center"}
-img <- readPNG("strike_by_eps.png")
-grid.raster(img)
-```
-
+|                 |Term                    |Estimate              |Observations |% Strike |
+|:----------------|:-----------------------|:---------------------|:------------|:--------|
+|All Pitches      |Intercept               |0.135*** (0.0231)     |360000       |0.335    |
+|                 |Umpire Strike Avg (LOO) |0.597*** (0.0688)     |             |         |
+|Marginal Pitches |Intercept               |0.139*** (0.024)      |139000       |0.53     |
+|                 |Umpire Strike Avg (LOO) |0.737*** (0.0452)     |             |         |
+|Clear Strikes    |Intercept               |0.566*** (0.0722)     |46000        |0.983    |
+|                 |Umpire Strike Avg (LOO) |0.425*** (0.0734)     |             |         |
+|Clear Balls      |Intercept               |0.00395*** (0.000656) |175000       |0.0115   |
+|                 |Umpire Strike Avg (LOO) |0.658*** (0.0525)     |             |         |

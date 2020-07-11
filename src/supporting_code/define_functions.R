@@ -81,10 +81,16 @@ define_marginal <- function(px, pz, left = -0.83, right = 0.83, bot = 1.52,
   strike_bot_top <- ifelse(pz >= bot_out & pz <= top_out, 1, 0)
   
   # marg <- ifelse((marg_left_right & strike_bot_top), 1, 0)
-  marg <- ifelse((marg_bot_top & strike_left_right) | (marg_left_right & strike_bot_top), 1, 
-                 ifelse(strike_left_right & strike_bot_top, 2, 3))
+  marg <- ifelse((marg_bot_top & strike_left_right) | (marg_left_right & strike_bot_top), "On Margin", 
+                 ifelse(strike_left_right & strike_bot_top, "Clear Strike", "Clear Ball"))
   
   return(marg)
+}
+
+define_strike <- function(px, pz, left = -0.83, right = 0.83, bot = 1.52, 
+                            top = 3.42) {
+  strike <- ifelse(px >= left & px <= right & pz >= bot & pz <= top, "Strike", "Ball")
+  return(strike)
 }
 
 
