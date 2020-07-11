@@ -1,17 +1,20 @@
-# Header -----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Proj: Umpire Fixed Effects
 # Author: Evan Flack (evanjflack@gmail.com)
 # Desc: Creates sample of all 2016 regular season games
 # ------------------------------------------------------------------------------
 
+# Libraries --------------------------------------------------------------------
 library(data.table)
 library(magrittr)
 
 # Read In Data -----------------------------------------------------------------
-# Pitches DT (regular season 2016)
-pitch_dt <- fread("Data/sample_pitch_data.csv")
+message("Reading in data...")
+
+pitch_dt <- fread("../../data/raw/sample_pitch_data.csv")
 
 # Subset to Regular Season -----------------------------------------------------
+message("Subsetting to regular season...")
 # Extract dates from gameday_link
 reg_season_dt <- pitch_dt %>%
   .[, year := substr(gameday_link, 5, 8)] %>% 
@@ -28,6 +31,7 @@ reg_season_dt %<>%
   .[home_team != "nas", ]
 
 # Games by Teams ---------------------------------------------------------------
+message("Checking # of games by team...")
 games <- reg_season_dt %>% 
   .[, .SD[1], by = gameday_link, .SDcols = c("home_team", "away_team", "month", "day")] %>% 
   .[order(month, day), ]
@@ -41,4 +45,5 @@ count_both <- count_home %>%
   .[, count_total := count_home + count_away]
 
 # Export -----------------------------------------------------------------------
-fwrite(reg_season_dt, "Data/pitch_data_2016_reg_season.csv")
+message("Exporting...")
+fwrite(reg_season_dt, "../../data/out/pitch_data_2016_reg_season.csv")
