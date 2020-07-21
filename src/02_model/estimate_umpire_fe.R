@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-# Proj: Umpire Fixed Effects
+# Proj: Umpire FE
 # Author: Evan Flack (evanjflack@gmail.com)
 # Desc: Estimates umpire fixed effects for tendancy to call strikes on all 
 #       pitches as well as marginal pitches
@@ -14,6 +14,9 @@ library(knitr)
 library(stringr)
 
 source("../supporting_code/define_functions.R")
+
+eps_out <- .1
+eps_in <- 0
 
 # Read In Data -----------------------------------------------------------------
 message("Reading in data...")
@@ -50,18 +53,18 @@ model_dt %<>%
   .[, strike := ifelse(des == "Called Strike", 1, 0)] %>% 
 # Define "close pitches" 
   .[, on_margin := define_marginal(px, pz, bot = sz_bot, top = sz_top, 
-                                   eps_out = .3, eps_in = .3)]
+                                   eps_out = eps_out, eps_in = eps_in)]
 
 # Estimatye Umpire FE ----------------------------------------------------------
 message("Estimating umpire FEs...")
-
+# All
 fit_umpire <- lm(strike ~ factor(umpire_name_HP) - 1, data = model_dt)
 dt_fit_umpire_all <- tidy(fit_umpire) %>% 
   as.data.table() %>% 
   .[, umpire := gsub("factor\\(umpire_name_HP\\)", "", term)] %>% 
-  .[, on_margin := 0]
+  .[, on_margin := "All"]
 
-
+# By marginal status
 fit_umpire_marg <- lm(strike ~ factor(umpire_name_HP):factor(on_margin) - 1, 
                       data = model_dt)
 dt_fit_umpire_marg <- tidy(fit_umpire_marg) %>% 
@@ -71,17 +74,15 @@ dt_fit_umpire_marg <- tidy(fit_umpire_marg) %>%
   .[, umpire := str_split_fixed(term, ":", 2)[, 1]] %>% 
   .[, on_margin := str_split_fixed(term, ":", 2)[, 2]]
 
-
 dt_fit_umpire <- rbind(dt_fit_umpire_all, dt_fit_umpire_marg) %>% 
   .[order(on_margin, estimate), ] %>% 
   .[, ord := seq(1, .N), by = on_margin] %>% 
   .[, `:=`(lb = estimate - 1.96*std.error, ub = estimate + 1.96*std.error)] %>% 
-  .[, on_margin := factor(on_margin, levels = c(0, 2, 3, 1), 
-                          labels = c('All', "Clear Strike", "Clear Ball", "On Margin"))] %>% 
+  .[, on_margin := factor(on_margin, levels = c('All', "Clear Strike", 
+                                                "Clear Ball", "On Margin"))] %>% 
   .[, med := median(estimate), by = on_margin]
 
-
-
+fwrite(dt_fit_umpire, "../../Data/umpire_fe.csv")
 
 ggplot(dt_fit_umpire) + 
   aes(x = ord, y = estimate, ymin = lb, ymax = ub, color = factor(on_margin)) + 
@@ -115,7 +116,7 @@ fit_fs_all <- lm(strike ~ loo_strike_perc, data = model_dt)
 
 # Marginal
 model_dt_marg <- model_dt %>% 
-  .[on_margin == 1, ] %>% 
+  .[on_margin == "On Margin", ] %>% 
   .[, sum_ump:= sum(strike), by = .(umpire_name_HP, on_margin)] %>% 
   .[, sum_game := sum(strike), by = .(gameday_link, on_margin)] %>% 
   .[, obs_ump := .N, by = .(umpire_name_HP, on_margin)] %>% 
@@ -126,7 +127,7 @@ fit_fs_marg <- lm(strike ~ loo_strike_perc, data = model_dt_marg)
 
 # Clear Balls
 model_dt_ball <- model_dt %>% 
-  .[on_margin == 3, ] %>% 
+  .[on_margin == "Clear Ball", ] %>% 
   .[, sum_ump:= sum(strike), by = .(umpire_name_HP, on_margin)] %>% 
   .[, sum_game := sum(strike), by = .(gameday_link, on_margin)] %>% 
   .[, obs_ump := .N, by = .(umpire_name_HP, on_margin)] %>% 
@@ -137,7 +138,7 @@ fit_fs_ball <- lm(strike ~ loo_strike_perc, data = model_dt_ball)
 
 # Clear Stikes
 model_dt_strike <- model_dt %>% 
-  .[on_margin == 2, ] %>% 
+  .[on_margin == "Clear Strike", ] %>% 
   .[, sum_ump:= sum(strike), by = .(umpire_name_HP, on_margin)] %>% 
   .[, sum_game := sum(strike), by = .(gameday_link, on_margin)] %>% 
   .[, obs_ump := .N, by = .(umpire_name_HP, on_margin)] %>% 
@@ -149,22 +150,22 @@ fit_fs_strike <- lm(strike ~ loo_strike_perc, data = model_dt_strike)
 dt_fs_all <- tidy(fit_fs_all) %>% 
   as.data.table() %>% 
   .[, term := c("Intercept", "Umpire Strike Avg (LOO)")] %>% 
-  .[, type := 0]
+  .[, type := "All"]
 
 dt_fs_marg <- tidy(fit_fs_marg) %>% 
   as.data.table() %>%
   .[, term := c("Intercept", "Umpire Strike Avg (LOO)")]  %>% 
-  .[, type := 1]
+  .[, type := "On Margin"]
 
 dt_fs_ball <- tidy(fit_fs_ball) %>% 
   as.data.table() %>%
   .[, term := c("Intercept", "Umpire Strike Avg (LOO)")] %>% 
-  .[, type := 3]
+  .[, type := "Clear Ball"]
 
 dt_fs_strike <- tidy(fit_fs_strike) %>% 
   as.data.table() %>%
   .[, term := c("Intercept", "Umpire Strike Avg (LOO)")] %>% 
-  .[, type := 2]
+  .[, type := "Clear Strike"]
 
 
 obs_mean_marg <- model_dt %>% 
@@ -172,7 +173,7 @@ obs_mean_marg <- model_dt %>%
 
 obs_mean_all<- model_dt %>% 
   .[, .(obs = .N, perc_strike = mean(strike))] %>% 
-  .[, on_margin := 0]
+  .[, on_margin := "All"]
 
 obs_mean <- obs_mean_marg %>% 
   rbind(obs_mean_all) %>% 
@@ -183,15 +184,10 @@ dt_fs <- rbind(dt_fs_all, dt_fs_marg, dt_fs_strike, dt_fs_ball) %>%
   .[, lapply(.SD, signif, digits = 3), by = .(type, term)] %>% 
   .[, stars := ifelse(p.value <= .01, "***", ifelse(p.value <= .05, "**", ifelse(p.value <= .1, "*", "")))] %>% 
   .[, estimate := paste0(estimate, stars)] %>% 
-  .[, est_se := paste0(estimate, " (", std.error, ")")] %>% 
-  .[, type := c("All Pitches", "", "Marginal Pitches", "", "Clear Strikes", "", "Clear Balls", "")] %>% 
+  .[, est_se := paste0(estimate, " (", std.error, ")")] %>%
   .[, .(type, term, est_se, obs, perc_strike)] %>% 
   .[, `:=`(obs = as.character(obs), perc_strike = as.character(perc_strike))] %>% 
-  .[c(2, 4, 6, 8), `:=`(obs = "", perc_strike = "")] %>% 
+  .[c(2, 4, 6, 8), `:=`(type = "", obs = "", perc_strike = "")] %>% 
   setnames(names(.), c("", "Term", "Estimate", "Observations", "% Strike"))
 
 kable(dt_fs)
-
-# Export -----------------------------------------------------------------------
-head(sample00_dt)
-
