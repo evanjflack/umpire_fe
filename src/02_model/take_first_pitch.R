@@ -68,6 +68,9 @@ model_dt %<>%
 model_dt %<>% 
   merge(hp_umpire_dt, by = c("gameday_link", "on_margin"))
 
+model_dt %<>% 
+  merge(outcomes_dt, by = c("gameday_link", "num"))
+
 # Estimatye Second Stage -------------------------------------------------------
 message("Estimating umpire FEs...")
 # LOO First Stage
@@ -78,14 +81,12 @@ model_dt %<>%
   .[, obs_game := .N, by = .(gameday_link, on_margin)] %>% 
   .[, loo_strike_perc := (sum_ump - sum_game)/(obs_ump - obs_game)]
 
-fit_fs <- lm(strike ~ loo_strike_perc:factor(on_margin) + factor(on_margin), 
+fit_fs <- lm(strike ~ loo_strike_perc:factor(on_margin) + factor(on_margin) - 1, 
              data = model_dt)
 
 summary(fit_fs)
-# second stage
-model_dt %<>% 
-  merge(outcomes_dt, by = c("gameday_link", "num"))
 
+# Reduced Form
 fit_rf <- lm(on_base ~ loo_strike_perc:factor(on_margin) + factor(on_margin), 
              data = model_dt)
 
