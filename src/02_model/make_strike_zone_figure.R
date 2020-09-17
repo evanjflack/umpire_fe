@@ -30,7 +30,7 @@ take_dt %<>%
   .[, strike := ifelse(des == "Called Strike", 1, 0)]
 
 # Make Figure ------------------------------------------------------------------
-sz <- define_sz_rect(.3, .3)
+sz <- define_sz_rect(.2, .1)
 
 pitch_sample <- sample(1:nrow(take_dt), 100)
 p1 <- ggplot(take_dt[pitch_sample]) + 
@@ -47,8 +47,10 @@ p1 <- ggplot(take_dt[pitch_sample]) +
   theme(legend.title = element_blank(), 
         legend.position = "bottom")
 
+p1
+
 p2 <- ggplot(take_dt[pitch_sample]) + 
-  aes(x = px, y = pz, shape = factor(rule_strike)) + 
+  aes(x = px, y = pz, shape = factor(des)) + 
   geom_point() + 
   sz$rect_light + 
   sz$rect_in + 
@@ -61,6 +63,7 @@ p2 <- ggplot(take_dt[pitch_sample]) +
   theme(legend.title = element_blank(), 
         legend.position = "bottom")
 
+p2
 
 p_both <- gridExtra::grid.arrange(p1, p2, nrow = 1)
 

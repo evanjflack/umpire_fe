@@ -11,6 +11,7 @@ library(RSQLite)
 # library(curl)
 library(RCurl)
 library(tictoc)
+library(ggplot2)
 
 devtools::install_github("cpsievert/pitchRx")
 library(pitchRx)

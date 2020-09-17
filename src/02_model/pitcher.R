@@ -48,7 +48,7 @@ pitch_dt %<>%
 # Estimate LOO First Stage -----------------------------------------------------
 
 first_stage_dt_marg <- pitch_dt %>% 
-  .[take == 1, ] %>% 
+  .[take == 1, ] %>%
   .[, strike_ump := sum(called_strike), by = .(umpire_name_HP, on_margin)] %>% 
   .[, strike_game := sum(called_strike), by = .(gameday_link, on_margin)] %>% 
   .[, obs_ump := .N, by = .(umpire_name_HP, on_margin)] %>% 
@@ -57,7 +57,8 @@ first_stage_dt_marg <- pitch_dt %>%
     .SDcols = c("umpire_name_HP", "strike_ump", "strike_game", "obs_ump", 
                 "obs_game")] %>% 
   .[, loo_strike_perc_marg := (strike_ump - strike_game)/(obs_ump - obs_game)] %>% 
-  .[, .(gameday_link, on_margin, loo_strike_perc_marg)]
+  .[on_margin == "On Margin", ] %>% 
+  .[, .(gameday_link, loo_strike_perc_marg)]
 
 first_stage_dt_all <- pitch_dt %>% 
   .[take == 1, ] %>% 
@@ -73,16 +74,20 @@ first_stage_dt_all <- pitch_dt %>%
 
 model_dt <-pitch_dt %>% 
   .[count == "0-0"] %>% 
-  .[, .(gameday_link, take, on_margin, called_strike)] %>% 
-  .[, swing := 1 - take]
-  
+  .[, .(gameday_link, take, on_margin, called_strike, count)] %>% 
+  .[, swing := 1 - take] %>% 
+  .[, on_margin := ifelse(on_margin == "On Margin", 1, 0)]
+
 model_dt %<>% 
   merge(first_stage_dt_all, by = "gameday_link") %>% 
-  merge(first_stage_dt_marg, by = c("gameday_link", "on_margin"))
+  merge(first_stage_dt_marg, by = "gameday_link")
 
 
-fit_all <- lm_robust(swing ~ loo_strike_perc_all, data = model_dt, 
+fit_all <- lm_robust(on_margin ~ loo_strike_perc_all, data = model_dt, 
                      se_type = "stata")
+
+summary(fit_all)
+
 
 dt_fit_all <- tidy(fit_all) %>% 
   as.data.table() %>% 
@@ -90,8 +95,10 @@ dt_fit_all <- tidy(fit_all) %>%
   .[, type := "All"] %>% 
   .[, term := NULL]
 
-fit_marg <- lm_robust(swing ~ loo_strike_perc_marg:factor(on_margin) + factor(on_margin) - 1, data = model_dt, 
-                     se_type = "stata")
+fit_marg <- lm_robust(on_margin ~ loo_strike_perc_marg, data = model_dt, 
+                      se_type = "stata")
+
+summary(fit_marg)
 
 dt_fit_marg <- tidy(fit_marg) %>% 
   as.data.table() %>%
@@ -128,7 +135,7 @@ fwrite(dt_fit, paste0("../../output/take_first_pitch_table.csv"))
 summary(fit_all)
 
 fit_marg <- lm_robust(take ~ loo_strike_perc_marg:factor(on_margin) + factor(on_margin) - 1, data = model_dt, 
-                  se_type = "stata")
+                      se_type = "stata")
 
 summary(fit_marg)
 

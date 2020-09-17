@@ -30,6 +30,12 @@ reg_season_dt %<>%
   # remove all star game
   .[home_team != "nas", ]
 
+# Team combinations
+reg_season_dt %<>% 
+  .[, team_combo := mapply(function(x, y) paste(c(x, y) %>% .[order(.)], 
+                                                collapse = "_"), 
+                           home_team, away_team)]
+
 # Games by Teams ---------------------------------------------------------------
 message("Checking # of games by team...")
 games <- reg_season_dt %>% 

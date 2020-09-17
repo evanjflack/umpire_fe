@@ -1,0 +1,63 @@
+---
+title: "Do Batters Respond to Umpires?"
+author: "Evan Flack"
+date:
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(png)
+library(grid)
+library(data.table)
+library(knitr)
+```
+
+### Strike Zone
+The left panel of figueshows the standard strike zone (rectangle), and the loction of 100 randomly selected pitches from the 2016 that were taken by batters. On average, umpires do a god job of making the right call: most pitches inside the strike zone are called stikes (triangles) and most outside are balls (circles). There is considerably ambiguity near the edges (margins) of the strike zone howver, with some pitches just inside being called balls, and some that land just outsie called strikes. The right panel of figure X highlights these marginal areas, by extending the strike zone both slightly inward (.1 units) and more substantially outward (0.2 units), to define an area where roughly half of the pitches are called balls and strikes respecitively. If a pitch lands in the area defined by the dashed lines, one could think of the call of ball/strike as the outcome of a coin flip.
+
+```{r fig.width=8, fig.height=5,echo=FALSE, fig.align="center"}
+img <- readPNG("strike_zone.png")
+grid.raster(img)
+```
+
+### Umpire Tendencies (Fixed Effects)
+
+What the coin-flip does not capture however, is that different umpires may vary systematically in ther interpretation of close pitches, i.e. not all umpires call strike 50 percent of the time for a ball on the margin. Ome umpire may have an expanded strike zone, only calling 40 percent strikes. This mirrors the case of judges, where the overall liklihood of going to jail may be a coin flip, but individual judges vary widely in their propensity to use jail as a punishment. The figure below shows estimated umpire fixed effects for the propensity to call a strike both for by type of pitch. As expected, the most variation between umpires comes on pitches that are on the margin (close to the edge of the strike zone). The second figure shows fixed effects by the ground truth: what an automated umpire would call.
+
+```{r fig.width=8, fig.height=4,echo=FALSE, fig.align="center"}
+img <- readPNG("umpire_fe_by_marg.png")
+grid.raster(img)
+```
+
+```{r fig.width=8, fig.height=4,echo=FALSE, fig.align="center"}
+img <- readPNG("umpire_fe_by_truth.png")
+grid.raster(img)
+```
+
+### Do the umpires tendencies predict a strike call? 
+
+First, I show that the variation in strike propensity by umpire does indeed predict stikes. I calculate each umpires propoensity to call a strike ($UmpireStike$), overall and by pitch location ($Location$), \textit{excluding} any pitches from that game. I then regress an indicator for stike call ($Stike$)on this average, first for all pitches and then by pitch location. The regression is restricted to only taken pitches, where we observe the umpires call (all counts). Across all pitch locations, the umpires tendency to call a strike (in other games) is a significant predictor of whether a pitch in the current game will be called a strike. The relationship seems to be strongest for pitches on the margin, where there is the most variation in umpire tendency.
+
+$Strike_i = \pi_0 + \pi_1 Umpire Strike \pi_2 Location + \pi_3 U,pireStrike \times Location+ u_i$
+
+```{r, echo=FALSE}
+dt <- fread("umpire_fe_table.csv")
+dt[is.na(dt)] <- "-"
+kable(dt)
+```
+
+
+### Player Reaction 
+Next, I test whether batters react to the tendencies of an umpires. If a batter knows that umpire is more likely to call a strike (ball) on a close pitch, he might be more inclined to swing at (take) it. Because the umpires are quasi-randonly assigned to games, the tendency to call balls/strikes is randonized to the situation. I restrict the following regression to only 0-0 counts, so that the swing/take decision is not influenced by the count. I regress an indicator for wherther the batter swung at the pitch ($Swing$) on the umpires stike popensity, again both overall and by pitch location. Across all pitches, batters swing more often for umpires that tend to call strikes, but the relationship is not statistically significant. Similarily, there is no significant relationship for clear balls and clear stikes, and interestingly, the point estimate for clear stikes suggest that batters swing less, for umpires that are more likely to call stikes on these types of pitches. On close pitches however, I find that batters swing significantly more when the umpire tends to call more stikes on close pitches. 
+
+$Swing_i = \beta_0 + \beta_1 Umpire Strike_i + \beta_2 Location_i + \beta_3 UmpireStrike \times Location + \epsilon_i$
+
+```{r, echo=FALSE}
+dt <- fread("take_first_pitch_table.csv")
+dt[is.na(dt)] <- "-"
+kable(dt)
+```
+
+
+
