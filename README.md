@@ -1,10 +1,10 @@
 # umpire_fe
 
 ### Overview
-Study of bias in causal interpretation of baseball statistics. Introduces the umpire fixed effects methodology, which closely follows the judge fixed effects design, to generate plausibly exogenous variation in balls/strikes.
+This project uses Major League Baseball (MLB) pitch data and an umpire fixed effects methodology to study various phenomenon in baseball. For example, how do batters learn about and react to the strike zone of an umpire?
 
 ### Maintainers
-* Evan Flack (evanjflack@gmail.com), Research Assistant, Harvard Kennedy School of Government
+* Evan Flack (evanjflack at gmail dot com), Research Assistant, Harvard Kennedy School of Government
 
 ### Contents
 
@@ -16,3 +16,6 @@ Study of bias in causal interpretation of baseball statistics. Introduces the um
 
 #### output
 * Tables and figures
+
+### Data
+I use the MLB ptich data from the 2015-2018 regular seasons, available on [Kaggle](https://www.kaggle.com/pschale/mlb-pitch-data-20152018). Thanks to Paul Schale for scraping and compiling this data!
