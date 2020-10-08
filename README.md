@@ -13,3 +13,6 @@ Study of bias in causal interpretation of baseball statistics. Introduces the um
 * `02_features`: scripts to create features from pitch/game data (e.g. team records)
 * `03_model:` scripts to estimate umpire fixed effects and their effect on player decisions
 * `supporting code`: scripts to define functions/plot themes
+
+#### output
+* Tables and figures
