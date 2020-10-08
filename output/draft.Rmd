@@ -29,6 +29,16 @@ img <- readPNG("strike_zone.png")
 grid.raster(img)
 ```
 
+
+### Model
+
+The situation I would like to emulate is the following: imagine that every time a batter came to the plate the umpire flipped a coin, if it landed on heads the count began at 1-0, if tails, the count goes to 0-1.
+
+$y_{1,1} - y_{0, 1} + y_{0, 1} - y_{0, 0}$
+
+$E[hit | strike] - E[hit | ball]$
+
+
 ### Umpire Fixed Effects
 
 What the coin-flip does not capture however, is that different umpires may vary systematically in ther interpretation of close pitches, i.e. not all umpires call strike 50 percent of the time for a ball on the margin. Ome umpire may have an expanded strike zone, only calling 40 percent strikes. This mirrors the case of judges, where the overall liklihood of going to jail may be a coin flip, but individual judges vary widely in their propensity to use jail as a punishment. Figure X shows estimateds umpire fixed effects for the propensity to call a strike both for all pitches (left panel) and those that I define to be on the margin (right panel). 
