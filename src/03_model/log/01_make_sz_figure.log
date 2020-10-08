@@ -1,0 +1,16 @@
+--------------------------------------------------------------------------------
+log/01_make_sz_figure.log
+2020-09-21 15:37:25
+
+
+Reading in data ...
+Prepping data...
+Making sz figure...
+Warning messages:
+1: Removed 3 rows containing missing values (geom_point). 
+2: Removed 3 rows containing missing values (geom_point). 
+Exporting...
+
+12.964 sec elapsed
+2020-09-21 15:37:38
+--------------------------------------------------------------------------------
