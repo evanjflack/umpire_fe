@@ -18,4 +18,4 @@ This project uses Major League Baseball (MLB) pitch data and an umpire fixed eff
 * Tables and figures
 
 ### Data
-I use the MLB ptich data from the 2015-2018 regular seasons, available on [Kaggle](https://www.kaggle.com/pschale/mlb-pitch-data-20152018). Thanks to Paul Schale for scraping and compiling this data!
+* I use the MLB ptich data from the 2015-2018 regular seasons, available on [Kaggle](https://www.kaggle.com/pschale/mlb-pitch-data-20152018). Thanks to Paul Schale for scraping and compiling this data!
