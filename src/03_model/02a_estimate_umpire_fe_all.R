@@ -85,6 +85,8 @@ p <- ggplot(dt_correct) +
 ggsave(paste0("../../output/correct_calls.png"), p, 
        width = 6, height = 3)
 
+fwrite(dt_correct, "../../data/out/umpire_correct_call_fe.csv")
+
 # Estimatye Umpire FE ----------------------------------------------------------
 message("Estimating umpire FEs...")
 
@@ -132,6 +134,8 @@ p <- ggplot(dt_fit_umpire) +
         axis.ticks.x = element_blank())
 
 ggsave("../../output/umpire_fe_by_marg.png", p, width = 6, height = 5)
+
+fwrite(dt_fit_umpire, "../../data/out/umpire_zone_fe.csv")
 
 # End --------------------------------------------------------------------------
 end_log_file()

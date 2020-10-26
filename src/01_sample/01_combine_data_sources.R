@@ -43,7 +43,7 @@ pitch_dt_final <- pitch_dt %>%
         sz_bot, sz_top,  px, pz, zone, code, type, pitch_type)]
 
 atbat_dt_final <- atbat_dt %>% 
-  .[, .(g_id, ab_id, inning, top)]
+  .[, .(g_id, ab_id, batter_id, inning, top)]
 
 # Merge Data -------------------------------------------------------------------
 message("Merging data...")
