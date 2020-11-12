@@ -83,7 +83,7 @@ model_dt <- pitch_dt %>%
   .[b_count == 0 & s_count == 0] %>% 
   .[, .(g_id, take, on_margin, called_strike, inning, batter_id)] %>% 
   .[, swing := 1 - take] %>% 
-  .[, stage := ifelse(inning <= 3, "1-3", ifelse(inning <= 6, "4-6", "6-9"))] %>% 
+  .[, stage := ifelse(inning <= 3, "1-3", ifelse(inning <= 6, "4-6", "7-9"))] %>% 
   .[inning <= 9, ]
 
 model_dt %<>% 
@@ -97,6 +97,9 @@ model_dt %<>%
 model_dt %<>% 
   merge(times_faced_umpire, by = c("g_id", "batter_id"))
 
+
+
+# By Previous Experience with Umpire -------------------------------------------
 model_dt %<>% 
   .[, seen_before := ifelse(ump_times > 1, 1, 0)]
 
@@ -109,6 +112,83 @@ summary(fit_exp)
 
 
 # By Stage of Game -------------------------------------------------------------
+
+# Estimation -------------------------------------------------------------------
+model_dt %<>% 
+  .[, on_margin1 := tolower(gsub(" ", "_", on_margin))]
+
+
+type1 <- c("all", "on_margin", "clear_ball", "clear_strike")
+type2 <- c("all", "on_margin", "clear_ball", "clear_strike")
+
+grid <- as.data.table(crossing(type1, type2))
+
+
+dt_fit <- foreach(type1 = grid$type1, 
+                  type2 = grid$type2, 
+                  .combine = "rbind") %do% 
+  {
+    if (type1 == "all") {
+      fit_dt <- model_dt
+    } else {
+      fit_dt <- model_dt[on_margin1 == type1]
+    }
+    
+    
+    fit_dt[, loo_perc := get(paste0("loo_strike_perc_", type2))]
+    
+    fit <- lm_robust(swing ~ loo_perc:factor(stage) + factor(stage), data = fit_dt, 
+                     se_type = "stata")
+    
+    fit_to_dt(fit, "loo_perc", "stage") %>% 
+      .[, type1 := type1] %>% 
+      .[, type2 := type2]
+  }
+
+
+obs_mean_marg <- model_dt %>% 
+  .[, .(obs = .N, perc_swing = mean(swing)), by = .(on_margin1, stage)]
+
+obs_mean_all <- model_dt %>% 
+  .[, .(obs = .N, perc_swing = mean(swing)), by = stage] %>% 
+  .[, on_margin1 := "all"]
+
+obs_mean <- obs_mean_marg %>% 
+  rbind(obs_mean_all) %>% 
+  setnames("on_margin1", "type1")
+
+dt_fit_print <- clean_fit_dt(dt_fit, c("stage", "type1", "type2")) %>% 
+  .[type1 == "on_margin", ] %>% 
+ merge(obs_mean, by = c("type1", "stage")) %>% 
+  .[, type2 := factor(type2, levels = c("all", "on_margin", "clear_ball", "clear_strike"), 
+                      labels = c("All", "On Margin", "Clear Ball", "Clear Strike"))] %>% 
+  .[order(type2, stage)] %>% 
+  dcast(stage + obs + perc_swing ~ type2, value.var = "est_se") %>% 
+  .[, obs := prettyNum(obs, big.mark = ",")] %>% 
+  .[, perc_swing := round(perc_swing, 3)]
+
+print(xtable(dt_fit_print), align = c("l", "l", "l", rep("c", 6)), 
+      sanitize.text.function = force,
+      include.rownames = F)
+
+
+
+  dcast(type2 ~ stage, value.var = c("obs", "perc_swing", "est_se"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 fit_stage <- lm_robust(swing ~ loo_strike_perc_all:factor(stage) + factor(stage),
                        data = model_dt, 
                        se_type = "stata")

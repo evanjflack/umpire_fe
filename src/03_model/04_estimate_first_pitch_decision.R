@@ -30,6 +30,10 @@ message("Reading in data...")
 
 pitch_dt <- fread("../../data/out/reg_season_data_2015_2018.csv")
 
+first_stage_dt_all <- fread("../../data/out/first_stage_game_all.csv")
+
+first_stage_dt_marg <- fread("../../data/out/first_stage_game_marg.csv")
+
 # Prep Data --------------------------------------------------------------------
 message("Prepping data...")
 
@@ -39,44 +43,6 @@ pitch_dt %<>%
                                    eps_out = eps_out, eps_in = eps_in)] %>% 
   .[, called_strike := ifelse(code == "C", 1, 0)]
 
-
-# Estimate LOO First Stage -----------------------------------------------------
-first_stage_dt_marg <- pitch_dt %>% 
-  .[take == 1, ] %>% 
-  .[, strike_ump := sum(called_strike), by = .(umpire_HP, on_margin)] %>% 
-  .[, strike_game := sum(called_strike), by = .(g_id, on_margin)] %>% 
-  .[, obs_ump := .N, by = .(umpire_HP, on_margin)] %>% 
-  .[, obs_game := .N, by = .(on_margin, g_id)] %>% 
-  .[, .SD[1], by = .(g_id, on_margin), 
-    .SDcols = c("umpire_HP", "strike_ump", "strike_game", "obs_ump", 
-                "obs_game")] %>% 
-  .[, loo_strike_perc_marg := (strike_ump - strike_game)/(obs_ump - obs_game)] %>% 
-  .[, .(g_id, on_margin, loo_strike_perc_marg)] %>% 
-  .[!(is.na(on_margin)), ]
-
-fwrite(first_stage_dt_marg, "../../data/out/first_stage_game_marg.csv")
-
-first_stage_dt_marg_wide <- first_stage_dt_marg %>% 
-  dcast(g_id ~ on_margin, value.var = "loo_strike_perc_marg") %>% 
-  setnames(names(.)[-1], paste0("loo_strike_perc_", tolower(names(.)[-1]))) %>% 
-  setnames(names(.), gsub(" ", "_", names(.))) 
-
-head(first_stage_dt_marg_wide)
-
-first_stage_dt_all <- pitch_dt %>% 
-  .[take == 1, ] %>% 
-  .[, strike_ump := sum(called_strike), by = .(umpire_HP)] %>% 
-  .[, strike_game := sum(called_strike), by = .(g_id)] %>% 
-  .[, obs_ump := .N, by = .(umpire_HP)] %>% 
-  .[, obs_game := .N, by = .(g_id)] %>% 
-  .[, .SD[1], by = .(g_id), 
-    .SDcols = c("umpire_HP", "strike_ump", "strike_game", "obs_ump", 
-                "obs_game")] %>% 
-  .[, loo_strike_perc_all := (strike_ump - strike_game)/(obs_ump - obs_game)] %>% 
-  .[, .(g_id, loo_strike_perc_all)]
-
-fwrite(first_stage_dt_all, "../../data/out/first_stage_game_marg.csv")
-
 model_dt <- pitch_dt %>% 
   .[b_count == 0 & s_count == 0] %>% 
   .[, .(g_id, take, on_margin, called_strike, inning)] %>% 
@@ -84,40 +50,57 @@ model_dt <- pitch_dt %>%
   .[, stage := ifelse(inning <= 3, "1-3", ifelse(inning <= 6, "4-6", "6-9"))] %>% 
   .[inning <= 9, ]
 
+
+first_stage_dt_marg_wide <- first_stage_dt_marg %>% 
+  dcast(g_id ~ on_margin, value.var = "loo_strike_perc_marg") %>% 
+  setnames(names(.)[-1], paste0("loo_strike_perc_", tolower(names(.)[-1]))) %>% 
+  setnames(names(.), gsub(" ", "_", names(.))) 
+
 model_dt %<>% 
   merge(first_stage_dt_all, by = "g_id") %>% 
   merge(first_stage_dt_marg, by = c("g_id", "on_margin")) %>% 
   merge(first_stage_dt_marg_wide, by = "g_id")
 
+n1 <- nrow(model_dt)
 model_dt %<>% 
   .[!is.na(loo_strike_perc_all)]
+n2 <- nrow(model_dt)
 
+message(n1 - n2, " observations dropped for no game level stike propensity")
+
+model_dt %<>% 
+  .[, on_margin1 := tolower(gsub(" ", "_", on_margin))]
 
 # First Stage ------------------------------------------------------------------
-take_dt <- model_dt %>% 
+take_dt <- model_dt %>%
   .[take == 1, ]
 
+dt_fit_fs <- data.table()
+for (i in c("all", unique(take_dt$on_margin1))) {
+  if (i != "all") {
+    fit_dt <- take_dt[on_margin1 == i]
+  } else {
+    fit_dt <- take_dt
+  }
+  
+  fit_dt[, loo_perc := get(paste0("loo_strike_perc_", i))]
+  fit_fs <- lm(called_strike ~ loo_perc, data = fit_dt)
 
-fit_fs_all <- lm(called_strike ~ loo_strike_perc_all, data = take_dt)
+  
+ fstat <- summary(fit_fs)$fstatistic["value"]
 
-fit_fs_marg <- lm(called_strike ~ loo_strike_perc_marg:factor(on_margin) + 
-                    factor(on_margin) - 1, data = take_dt)
+  dt_fit_fs1 <- fit_to_dt(fit_fs, "loo_perc") %>% 
+    .[, on_margin1 := i] %>% 
+    .[, fstat := fstat]
+  
+  dt_fit_fs %<>% rbind(dt_fit_fs1)
+      
+}
 
-dt_fit_fs_all <- tidy(fit_fs_all) %>% 
-  as.data.table() %>% 
-  .[, coeff := ifelse(grepl("loo", term), "Ump Strike Avg", "Intercept")] %>% 
-  .[, term := gsub("loo_strike_perc_marg:", "", term)] %>% 
-  .[, on_margin := "All"]
-
-dt_fit_fs_marg <- tidy(fit_fs_marg) %>% 
-  as.data.table() %>% 
-  .[, coeff := ifelse(grepl("loo", term), "Ump Strike Avg", "Intercept")] %>% 
-  .[, term := gsub("loo_strike_perc_marg:", "", term)] %>% 
-  .[, on_margin := gsub("factor\\(on_margin\\)", "", term)]
-
-dt_fit_fs <- rbind(dt_fit_fs_all, dt_fit_fs_marg) %>% 
-  .[, term := NULL] %>% 
-  clean_fit_dt(id_vars = c("on_margin", "coeff"), sig = T)
+dt_fit_fs_clean <- dt_fit_fs %>% 
+  clean_fit_dt(id_vars = c("on_margin1", "fstat"), sig = T) %>% 
+  .[, on_margin := str_to_title(gsub("_", " ", on_margin1))] %>%
+  .[, on_margin1 := NULL]
 
 obs_mean_marg <- take_dt %>% 
   .[, .(obs = .N, perc_strike = mean(called_strike)), by = on_margin]
@@ -129,14 +112,14 @@ obs_mean_all<- take_dt %>%
 obs_mean <- obs_mean_marg %>% 
   rbind(obs_mean_all)
 
-dt_fit_fs_print <- dt_fit_fs %>% 
+dt_fit_fs_print <- dt_fit_fs_clean %>% 
   merge(obs_mean, by = "on_margin") %>% 
-  .[, .(on_margin, coeff, obs, perc_strike, est_se)] %>% 
+  .[, .(on_margin, obs, perc_strike, est_se, fstat)] %>% 
   .[, obs := prettyNum(obs, big.mark = ",")] %>% 
-  .[, perc_strike := as.character(round(perc_strike, 3))] %>% 
-  .[c(2, 4, 6, 8), `:=`(on_margin = "", obs = "-", perc_strike = "-")]
+  .[, perc_strike := as.character(round(perc_strike, 3))] %>%
+  .[, fstat := round(fstat, 1)]
 
-print(xtable(dt_fit_fs_print), align = c("l", "l", "l", rep("c", 3)), 
+print(xtable(dt_fit_fs_print),
       sanitize.text.function = force,
       include.rownames = F)
 
@@ -151,10 +134,6 @@ model_dt %<>%
                           breaks = c(-Inf, quantile(loo_strike_perc_marg, 
                                                     seq(0, 1, 1/n_quant))[2:(n_quant)], Inf), 
                          labels = seq(1, n_quant)), by = on_margin]
-
-model_dt %<>% 
-  .[, on_margin1 := tolower(gsub(" ", "_", on_margin))]
-
 
 dtp_all <- calc_cmean(model_dt, "swing", "loo_all_cut", se = T) %>% 
   .[, on_margin := "All"] %>% 
@@ -177,11 +156,10 @@ ggplot(dtp[!is.na(on_margin)]) +
   scale_x_continuous(breaks = seq(2, 10, 2)) + 
   my_theme
 
-ggsave("../../output/reduced_form_by_margin.png", width = 6, height = 5)
+ggsave("../../output/reduced_form_by_margin.png", width = 6, height = 4)
 
 # Estimation -------------------------------------------------------------------
-
-head(model_dt)
+message("Estimating reduced form...")
 
 type1 <- c("all", "on_margin", "clear_ball", "clear_strike")
 type2 <- c("all", "on_margin", "clear_ball", "clear_strike")
@@ -238,11 +216,13 @@ print(xtable(dt_fit_print), align = c("l", "l", rep("c", 6)),
       include.rownames = F)
 
 
-# Corelations Between
+# Corelations Between Tendencies -----------------------------------------------
+messgage("Calculating correlations between tendencies...")
 dt_cor <- cor(first_stage_dt_marg_wide[complete.cases(first_stage_dt_marg_wide), -1]) %>% 
   as.data.table(keep.rownames = T) %>% 
   .[, rn := gsub("loo_strike_perc_", "", rn)] %>% 
-  setnames(names(.), gsub("loo_strike_perc_", "", names(.)))
+  setnames(names(.), gsub("loo_strike_perc_", "", names(.))) %T>% 
+  print()
   
 
 
