@@ -1,13 +1,9 @@
 --------------------------------------------------------------------------------
 log/01_combine_data_sources.log
-2020-10-26 15:27:02
+2021-09-16 10:32:53
 
+OBSERVATIONS LOST IN MERGING, DATA NOT EXPORTED!!
 
-Reading in data...
-Prepping data...
-Merging data...
-Exporting...
-
-31.29 sec elapsed
-2020-10-26 15:27:33
+25.867 sec elapsed
+2021-09-16 10:33:19
 --------------------------------------------------------------------------------
