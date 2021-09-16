@@ -4,7 +4,7 @@
 This project uses Major League Baseball (MLB) pitch data and an umpire fixed effects methodology to study various phenomenon in baseball. For example, how do batters learn about and react to the strike zone of an umpire?
 
 ### Maintainers
-* Evan Flack (evanjflack at gmail dot com), PhD Student, Department of Economics, StanfordUniversity
+* Evan Flack (evanjflack at gmail dot com), PhD Student, Department of Economics, Stanford University
 
 ### Contents
 
