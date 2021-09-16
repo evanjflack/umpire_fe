@@ -1,40 +1,40 @@
-# ------------------------------------------------------------------------------
+# Header -----------------------------------------------------------------------
 # Proj: Umpire FE
 # Author: Evan Flack (evanjflack@gmail.com)
-# Desc: Estimates umpire fixed effects for tendancy to call strikes on all 
+# Desc: Estimates umpire fixed effects for tendency to call strikes on all 
 #       pitches as well as by pitch location
-# ------------------------------------------------------------------------------
 
 # Libraries --------------------------------------------------------------------
-library(ggplot2)
 library(data.table)
 library(magrittr)
+library(tictoc)
 library(broom)
-library(knitr)
 library(stringr)
-library(cfo.behavioral)
 
+# Define user functions and plot themes
 source("../supporting_code/define_functions.R")
-source("../supporting_code/define_plot_theme.R")
 
+# User Inputs
+# Epsilons for marginal strike zone definition
 eps_out <- .2
 eps_in <- .1
 
-options(scipen = 999)
-
-start_log_file("log/02a_estimate_umpire_fe_all.R")
+start_log_file("log/02a_estimate_umpire_fe_all")
 
 # Read In Data -----------------------------------------------------------------
 message("Reading in data...")
 
-pitch_dt <- fread("../../data/out/reg_season_data_2015_2018.csv")
+# All regular season pitches 2015-2018
+model_dt <- fread("../../data/out/reg_season_data_2015_2018.csv")
 
 # Prep Data --------------------------------------------------------------------
-message("Prepping data...")
 
-model_dt <- pitch_dt
+# Only keep taken pitches
+model_dt %<>% 
+  .[, take := ifelse(code %chin% c("*B", "B", "C"), 1, 0)] %>% 
+  .[take == 1, ]
 
-
+# Drop observations with no position, or home plate umpire
 n1 <- nrow(model_dt)
 model_dt %<>% 
   .[!(is.na(px) | is.na(pz) | is.na(umpire_HP))]
@@ -42,32 +42,19 @@ n2 <- nrow(model_dt)
 message(n1 - n2, " out of ", n1, "(", round((n1-n2)/n1, 4), 
         ") observations dropped. ", n2, " Obs left")
 
-
+# Define Indicators
 model_dt %<>% 
-  .[, take := ifelse(code %chin% c("*B", "B", "C"), 1, 0)] %>% 
-  .[take == 1, ]
-
-nrow(model_dt)
-
-# Drop observations w/o pitch positions or umpires
-
-
-# Define binary first stage outcome (strike)
-model_dt %<>% 
+  # Indicator for outcome (called strike)
   .[, called_strike := ifelse(code == "C", 1, 0)] %>% 
-# Define "close pitches" 
+  # Indicator for if a pitch was on the margin or not (within some epsilon of 
+  # the zone)
   .[, on_margin := define_marginal(px, pz, bot = sz_bot, top = sz_top, 
-                                   eps_out = eps_out, eps_in = eps_in)] %>% 
-  .[, rule_strike := define_strike(px, pz, bot = sz_bot, top = sz_top)] %>% 
-  .[, rule_strike1 := ifelse(rule_strike == "Strike", 1, 0)] %>% 
-  .[, correct := ifelse(called_strike == rule_strike1, 1, 0)]
-
-mean(model_dt$correct)
+                                   eps_out = eps_out, eps_in = eps_in)]
 
 # Estimate Umpire FE -----------------------------------------------------------
-message("Estimating umpire FEs...")
+# Estimate each umpires propensity to call a strike
 
-# All pitches
+# All pitches (remove intercept to get the mean for each umpire)
 fit_umpire <- lm(called_strike ~ factor(umpire_HP) - 1, data = model_dt)
 
 dt_fit_umpire_all <- tidy(fit_umpire) %>% 
@@ -77,8 +64,11 @@ dt_fit_umpire_all <- tidy(fit_umpire) %>%
   .[order(estimate), ]
 
 # By marginal status
+# Same as above, by stratify whether the pitch was a (1) clear strike, (2) on 
+# the margin, or (3) a clear ball.
 fit_umpire_marg <- lm(called_strike ~ factor(umpire_HP):factor(on_margin) - 1, 
                       data = model_dt)
+
 dt_fit_umpire_marg <- tidy(fit_umpire_marg) %>% 
   as.data.table()  %>% 
   .[, term := gsub("factor\\(umpire_HP\\)", "", term)] %>% 
@@ -86,68 +76,25 @@ dt_fit_umpire_marg <- tidy(fit_umpire_marg) %>%
   .[, umpire := str_split_fixed(term, ":", 2)[, 1]] %>% 
   .[, on_margin := str_split_fixed(term, ":", 2)[, 2]]
 
-# Combine
+# Number of observations per umpire
+obs_umpire_all <- model_dt[, .(obs = .N), by = umpire_HP] %>% 
+  .[, on_margin := "All"]
+obs_umpire_margin <- model_dt[, .(obs = .N), by = .(umpire_HP, on_margin)]
+obs_umpire <- rbind(obs_umpire_all, obs_umpire_margin) %>% 
+  setnames("umpire_HP", "umpire")
 
-obs_umpire <- model_dt[, .(obs = .N), by = umpire_HP] %>% 
-  .[order(obs), ]
-
+# Combine on the two DTs of estimates
 dt_fit_umpire <- rbind(dt_fit_umpire_all, dt_fit_umpire_marg) %>% 
-  .[order(on_margin, estimate), ] %>% 
-  .[, ord := seq(1, .N), by = on_margin] %>% 
+  merge(obs_umpire, by = c("umpire", "on_margin")) %>% 
   .[, `:=`(lb = estimate - 1.96*std.error, ub = estimate + 1.96*std.error)] %>% 
-  .[, on_margin := factor(on_margin, levels = c('All', "Clear Strike", 
-                                                "Clear Ball", "On Margin"))] %>% 
-  .[, med := median(estimate), by = on_margin] %>% 
-  .[, umpire_HP := gsub("factor\\(umpire_HP\\)", "", term)] %>% 
-  merge(obs_umpire, by.x = "umpire", by.y = "umpire_HP")
+  .[, .(umpire, on_margin, obs, estimate, std.error, statistic, p.value, lb, 
+        ub)] %>% 
+  .[order(umpire, on_margin), ]
 
+# Export -----------------------------------------------------------------------
+message("Exporting FE estimates.")
 
-sum_ump <- dt_fit_umpire %>% 
-  .[obs >= 1000, ] %>% 
-  .[, .(min = min(estimate), max = max(estimate), var = var(estimate), 
-        med = median(estimate), 
-        first = quantile(estimate, .25), 
-        third = quantile(estimate, .75)), 
-    by = on_margin] %>% 
-  .[, range := max - min] %>% 
-  .[, iqr := third - first] %>% 
-  .[, .(on_margin, med, min, max, range, iqr, var)] %>% 
-  .[, lapply(.SD, signif, digits = 2), by = on_margin] %>% 
-  .[, lapply(.SD, as.character), by = on_margin] 
-  
+fwrite(dt_fit_umpire, 
+       paste0("../../data/out/umpire_fe_by_zone_all_pitches.csv"))
 
-print(xtable(sum_ump, align = c("l", "l", rep("c", 6))), 
-      sanitize.text.function = force,
-      include.rownames = F)
-
-head(sum_ump)
-  
-
-# Plot
-ggplot(dt_fit_umpire[obs >= 1000, ]) + 
-  aes(x = ord, y = estimate, ymin = lb, ymax = ub, color = factor(on_margin)) + 
-  geom_point(size = .75) + 
-  geom_line() + 
-  # facet_wrap(~ on_margin, scales = "free_y") + 
-  geom_errorbar(alpha = .5, width = 0) +
-  geom_hline(yintercept = c(0, 1)) + 
-  geom_hline(aes(yintercept = med, color = factor(on_margin)), 
-             linetype = 2, data = dt_fit_umpire[, .SD[1], by = on_margin]) + 
-  labs(x = "Umpire (in order of stike %)", y = "Percentage Called Strikes", 
-       color = "Pitch Location") +
-  scale_y_continuous(breaks = seq(0, 1, .2)) + 
-  annotate(geom = "text", x = 50, y = .07, label = "Clear Balls", size = 3) + 
-  annotate(geom = "text", x = 50, y = .35, label = "All Pitches", size = 3) + 
-  annotate(geom = "text", x = 50, y = .55, label = "On Margin", size = 3) + 
-  annotate(geom = "text", x = 50, y = .9, label = "Clear Strikes", size = 3) + 
-  my_theme + 
-  theme(axis.text.x = element_blank(), 
-        axis.ticks.x = element_blank(), 
-        legend.position = "none")
-
-ggsave("../../output/umpire_fe_by_marg.png", width = 6, height = 4)
-
-fwrite(dt_fit_umpire, "../../data/out/umpire_zone_fe.csv")
-
-# End --------------------------------------------------------------------------
 end_log_file()
