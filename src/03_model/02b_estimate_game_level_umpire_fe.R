@@ -8,6 +8,7 @@
 library(data.table)
 library(magrittr)
 library(tictoc)
+library(broom)
 
 # Define user functions
 source("../supporting_code/define_functions.R")
@@ -21,39 +22,14 @@ start_log_file("log/02b_estimate_game_level_fe")
 
 # Read In Data -----------------------------------------------------------------
 
-# Regular season pitches 2015-2018
-model_dt <- fread("../../data/out/reg_season_data_2015_2018.csv")
-
-# Prep Data --------------------------------------------------------------------
-message("Prepping data...")
-
-# Remove pitches wih no location, define take, location, and called strike
-# Only keep taken pitches
-model_dt %<>% 
-  .[, take := ifelse(code %chin% c("*B", "B", "C"), 1, 0)] %>% 
-  .[take == 1, ]
-
-# Drop observations with no position, or home plate umpire
-n1 <- nrow(model_dt)
-model_dt %<>% 
-  .[!(is.na(px) | is.na(pz) | is.na(umpire_HP))]
-n2 <- nrow(model_dt)  
-message(n1 - n2, " out of ", n1, "(", round((n1-n2)/n1, 4), 
-        ") observations dropped. ", n2, " Obs left")
-
-# Define Indicators
-model_dt %<>% 
-  # Indicator for outcome (called strike)
-  .[, called_strike := ifelse(code == "C", 1, 0)] %>% 
-  # Indicator for if a pitch was on the margin or not (within some epsilon of 
-  # the zone)
-  .[, on_margin := define_marginal(px, pz, bot = sz_bot, top = sz_top, 
-                                   eps_out = eps_out, eps_in = eps_in)]
+# Taken pitches
+take_dt <- fread("../../data/med/take_data.csv") %>% 
+  .[, .(g_id, umpire_HP, called_strike, on_margin)]
 
 # Estimate LOO FEs -------------------------------------------------------------
 
 # All pitches
-loo_fe_all <- model_dt %>%
+loo_fe_all <- take_dt %>%
   # Number of strikes called by the umpire in all games
   .[, strike_ump := sum(called_strike), by = .(umpire_HP)] %>% 
   # Number of strikes called by the umpire in the given game
@@ -69,11 +45,11 @@ loo_fe_all <- model_dt %>%
   # Calculate the expected number of strikes from an umpire only using the data 
   # from the other games
   .[, loo_ump_fe := (strike_ump - strike_game)/(obs_ump - obs_game)] %>% 
-  .[, on_margin := "All"] %>% 
+  .[, on_margin := "all"] %>% 
   .[, .(g_id, on_margin, loo_ump_fe)]
 
 # Same as above but also condition on the location of the pitch
-loo_fe_marg <- model_dt %>%
+loo_fe_marg <- take_dt %>%
   .[, strike_ump := sum(called_strike), by = .(umpire_HP, on_margin)] %>% 
   .[, strike_game := sum(called_strike), by = .(g_id, on_margin)] %>% 
   .[, obs_ump := .N, by = .(umpire_HP, on_margin)] %>% 
@@ -85,13 +61,14 @@ loo_fe_marg <- model_dt %>%
   .[, .(g_id, on_margin, loo_ump_fe)] %>% 
   .[!(is.na(on_margin)), ]
 
-# Combine
-loo_fe <- rbind(loo_fe_all, loo_fe_marg) %>% 
-  .[order(g_id, on_margin), ]
+# Combine and reshape to wide
+loo_fe <- rbind(loo_fe_all, loo_fe_marg) %>%
+  dcast(g_id ~ on_margin, value.var = "loo_ump_fe") %>% 
+  setnames(names(.)[-1], paste0("loo_ump_fe_", names(.)[-1]))
 
 # Export -----------------------------------------------------------------------
 message("Exporting estimates to csv.")
 
-fwrite(loo_fe, "../../data/out/game_level_umpire_fe.csv")
+fwrite(loo_fe, "../../data/med/game_level_umpire_fe.csv")
 
 end_log_file()

@@ -93,3 +93,8 @@ end_log_file <- function() {
     sink(type="message")
   }
 }
+
+
+tidy_dt <- function(fit) {
+  data.table::as.data.table(broom::tidy(fit))
+}

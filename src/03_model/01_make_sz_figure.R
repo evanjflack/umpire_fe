@@ -19,25 +19,12 @@ start_log_file("log/01_make_sz_figure")
 message("Reading in data ...")
 
 # All regular season pitches 205-2018
-pitch_dt <- fread("../../data/out/reg_season_data_2015_2018.csv")
-
-# Prep Data --------------------------------------------------------------------
-
-# Only pitches that are taken and have non-missing position
-take_dt <- pitch_dt %>%
-  .[, take := ifelse(code %chin% c("*B", "B", "C"), 1, 0)] %>% 
-  .[take == 1, ] %>% 
-  .[!(is.na(px) | is.na(pz))]
-
-# Define marginal pitches
-take_dt %<>% 
-  .[, on_margin := define_marginal(px, pz, eps_out = .3, eps_in = .3)] %>% 
-  .[, strike := ifelse(code == "C", 1, 0)]
+take_dt <- fread("../../data/med/take_data.csv")
 
 # Make Figure ------------------------------------------------------------------
 
 # Strike zone rectangles
-sz <- define_sz_rect(.1, .1)
+sz <- define_sz_rect(.2, .1)
 
 # Sample of 100 pitches (not in dirt)
 pitch_sample <- sample(1:nrow(take_dt), 100)

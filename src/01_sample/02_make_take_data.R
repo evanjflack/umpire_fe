@@ -24,7 +24,7 @@ start_log_file("log/02_make_take_data")
 message("Reading in data...")
 
 # All regular season pitches 2015-2018
-pitches_dt <- fread("../../data/out/reg_season_data_2015_2018.csv")
+pitches_dt <- fread("../../data/med/reg_season_data_2015_2018.csv")
 
 # Prep Data --------------------------------------------------------------------
 
@@ -52,6 +52,6 @@ take_dt %<>%
 
 # Export -----------------------------------------------------------------------
 
-fwrite(take_dt, "../../data/out/take_data.csv")
+fwrite(take_dt, "../../data/med/take_data.csv")
 
 end_log_file()

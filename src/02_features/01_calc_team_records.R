@@ -18,7 +18,7 @@ start_log_file("log/01_calc_team_records")
 message("Reading in data...")
 
 # Game data from 2015-2018
-game_dt <- fread("../../data/kaggle_data/games.csv")
+game_dt <- fread("../../data/raw/kaggle_data/games.csv")
 
 # Team Records -----------------------------------------------------------------
 message("Calculating team records...")
@@ -58,6 +58,6 @@ team_wins_wide <- teams_wins_long %>%
 # Export -----------------------------------------------------------------------
 message("Exporting to csv.")
 
-fwrite(team_wins_wide, paste0("../../data/out/team_wins.csv"))
+fwrite(team_wins_wide, paste0("../../data/med/team_wins.csv"))
 
 end_log_file()

@@ -14,14 +14,16 @@ library(broom)
 library(knitr)
 library(stringr)
 library(estimatr)
-library(xtable)
-library(cfo.behavioral)
 library(foreach)
-library(tidyr)
+suppressMessages(library(tidyr))
+library(tictoc)
+
+# Define user functions/plot themes
 source("../supporting_code/define_functions.R")
 source("../supporting_code/define_plot_theme.R")
 
 # User Inputs
+# Epsilons for marginal strike zone
 eps_out <- .2
 eps_in <- .1
 

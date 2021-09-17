@@ -19,11 +19,11 @@ start_log_file("log/01_combine_data_sources")
 
 # All from 2015-2018
 # Pitch level
-pitch_dt <- fread("../../data/kaggle_data/pitches.csv")
+pitch_dt <- fread("../../data/raw/kaggle_data/pitches.csv")
 # At-bat level
-atbat_dt <- fread("../../data/kaggle_data/atbats.csv")
+atbat_dt <- fread("../../data/raw/kaggle_data/atbats.csv")
 # Game level
-game_dt <- fread("../../data/kaggle_data/games.csv")
+game_dt <- fread("../../data/raw/kaggle_data/games.csv")
 
 # Prep Data --------------------------------------------------------------------
 
@@ -59,7 +59,7 @@ if (n1 != n2) {
   message("OBSERVATIONS LOST IN MERGING, DATA NOT EXPORTED!!")
 } else if (n1 == n2) {
   message("Data exported to csv.")
-  fwrite(model_dt, paste0("../../data/out/reg_season_data_2015_2018.csv"))
+  fwrite(model_dt, paste0("../../data/med/reg_season_data_2015_2018.csv"))
 }
 
 end_log_file()

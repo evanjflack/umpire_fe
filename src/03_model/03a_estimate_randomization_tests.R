@@ -20,30 +20,21 @@ start_log_file("log/03a_estimate_randomization_tests")
 
 # Read in Data -----------------------------------------------------------------
 
-# LOO game level umpiore strike FEs
-ump_fe <- fread("../../data/out/game_level_umpire_fe.csv")
+# LOO game level umpire strike FEs
+ump_fe <- fread("../../data/med/game_level_umpire_fe.csv")
 
 # Game level data
-game_dt <- fread("../../data/kaggle_data/games.csv") %>% 
+game_dt <- fread("../../data/raw/kaggle_data/games.csv") %>% 
   .[, .(g_id, attendance)]
 
 # Team winning perctages each game
-team_wins <- fread(paste0("../../data/out/team_wins.csv")) %>% 
+team_wins <- fread(paste0("../../data/med/team_wins.csv")) %>% 
   .[, .(g_id, win_perc_home, win_perc_away)]
 
 # AT-bat level data
-atbat_dt <- fread("../../data/kaggle_data/atbats.csv")
+atbat_dt <- fread("../../data/raw/kaggle_data/atbats.csv")
 
 # Prep Data --------------------------------------------------------------------
-
-# Reshapes fixed effects to wide
-ump_fe %<>% 
-  .[, on_margin := factor(on_margin, levels = c("All", "Clear Ball", 
-                                                "Clear Strike", "On Margin"), 
-                          labels = c("all", "clear_ball", "clear_strike", 
-                                     "on_margin"))] %>% 
-  dcast(g_id ~ on_margin, value.var = "loo_ump_fe") %>% 
-  setnames(names(.)[-1], paste0("loo_ump_fe_", names(.)[-1]))
 
 # Handedness of starting pitcher
 pitcher_hand <- atbat_dt %>% 
