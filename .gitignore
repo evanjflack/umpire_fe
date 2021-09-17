@@ -6,5 +6,7 @@
 *.DS_store
 *.Rproj
 
+*.log
+
 src/sandbox/
 data/
